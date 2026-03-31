@@ -1,0 +1,80 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mongodb"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String       @id @default(auto()) @map("_id") @db.ObjectId
+  name         String
+  email        String       @unique
+  password     String
+  role         String       @default("staff") // admin | manager | staff
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+  stockEntries StockEntry[]
+
+  @@map("users")
+}
+
+model Category {
+  id        String    @id @default(auto()) @map("_id") @db.ObjectId
+  name      String    @unique
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  products  Product[]
+
+  @@map("categories")
+}
+
+model Vendor {
+  id        String    @id @default(auto()) @map("_id") @db.ObjectId
+  name      String    @unique
+  email     String?
+  phone     String?
+  address   String?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  products  Product[]
+
+  @@map("vendors")
+}
+
+model Product {
+  id           String       @id @default(auto()) @map("_id") @db.ObjectId
+  name         String
+  sku          String       @unique
+  description  String?
+  price        Float
+  quantity     Int          @default(0)
+  minStock     Int          @default(0)
+  categoryId   String       @db.ObjectId
+  vendorId     String       @db.ObjectId
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+  category     Category     @relation(fields: [categoryId], references: [id])
+  vendor       Vendor       @relation(fields: [vendorId], references: [id])
+  stockEntries StockEntry[]
+
+  @@map("products")
+}
+
+model StockEntry {
+  id              String   @id @default(auto()) @map("_id") @db.ObjectId
+  productId       String   @db.ObjectId
+  action          String   // Add | Remove | Adjust
+  quantityChanged Int
+  notes           String?
+  updatedById     String   @db.ObjectId
+  createdAt       DateTime @default(now())
+  product         Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  updatedBy       User     @relation(fields: [updatedById], references: [id])
+
+  @@map("stock_entries")
+}
