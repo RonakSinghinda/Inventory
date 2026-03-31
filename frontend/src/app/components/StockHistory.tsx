@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { History, TrendingUp, TrendingDown, SlidersHorizontal, Search, Filter, Download, ChevronLeft, ChevronRight } from "lucide-react";
-import { stockHistory, type StockAction } from "../data/mockData";
+import { useAppContext } from "../context/AppContext";
+import { type StockAction } from "../data/mockData";
 
 const ROWS_PER_PAGE = 7;
 
@@ -30,6 +31,7 @@ const TD: React.CSSProperties = {
 };
 
 export function StockHistory() {
+  const { stockHistory } = useAppContext();
   const [search, setSearch] = useState("");
   const [actionFilter, setActionFilter] = useState<"all" | StockAction>("all");
   const [page, setPage] = useState(1);

@@ -3,7 +3,7 @@ import {
   Package, AlertTriangle, Tag, Truck, BarChart2,
   ArrowUpRight, ArrowDownRight, ArrowRight, TrendingUp,
 } from "lucide-react";
-import { products, stockHistory } from "../data/mockData";
+import { useAppContext } from "../context/AppContext";
 
 const CARD: React.CSSProperties = {
   background: "white",
@@ -34,6 +34,7 @@ const STATS = [
 
 export function Dashboard() {
   const navigate = useNavigate();
+  const { products, stockHistory } = useAppContext();
   const lowStock     = products.filter((p) => p.status === "Low Stock" || p.status === "Out of Stock");
   const recentActivity = stockHistory.slice(0, 6);
 

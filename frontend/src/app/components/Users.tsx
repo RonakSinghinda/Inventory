@@ -1,12 +1,6 @@
-import { Users as UsersIcon, Plus, Shield, User } from "lucide-react";
-
-const USERS = [
-  { id: 1, name: "John Smith",    email: "john.smith@acme.com",    role: "Administrator", lastLogin: "Today, 09:15 AM", status: "Active",   initials: "JS", color: "#7c3aed" },
-  { id: 2, name: "Sarah Lee",     email: "sarah.lee@acme.com",     role: "Inventory Manager", lastLogin: "Today, 08:42 AM", status: "Active", initials: "SL", color: "#6366f1" },
-  { id: 3, name: "Mike Johnson",  email: "mike.j@acme.com",        role: "Warehouse Staff", lastLogin: "Yesterday, 05:30 PM", status: "Active", initials: "MJ", color: "#10b981" },
-  { id: 4, name: "Anna Williams", email: "anna.w@acme.com",        role: "Viewer",       lastLogin: "3 days ago",       status: "Active",   initials: "AW", color: "#8b5cf6" },
-  { id: 5, name: "Robert Chen",   email: "r.chen@acme.com",        role: "Inventory Manager", lastLogin: "1 week ago", status: "Inactive", initials: "RC", color: "#0ea5e9" },
-];
+import { useState } from "react";
+import { Users as UsersIcon, Plus, Shield, User, X, Check } from "lucide-react";
+import { useAppContext, type AppUser } from "../context/AppContext";
 
 const ROLE_CFG: Record<string, { bg: string; color: string }> = {
   "Administrator":      { bg: "#f5f3ff", color: "#7c3aed" },
@@ -17,8 +11,54 @@ const ROLE_CFG: Record<string, { bg: string; color: string }> = {
 
 const TH: React.CSSProperties = { padding: "11px 16px", textAlign: "left" as const, fontSize: "0.7rem", fontWeight: 700, letterSpacing: "0.07em", textTransform: "uppercase" as const, color: "#64748b", background: "#f8fafc", borderBottom: "1px solid #e2e8f0" };
 const TD: React.CSSProperties = { padding: "14px 16px", fontSize: "0.84rem", color: "#374151", borderBottom: "1px solid #f1f5f9" };
+const LABEL: React.CSSProperties = { display: "block", fontSize: "0.8rem", fontWeight: 600, color: "#374151", marginBottom: "6px" };
+const baseInput: React.CSSProperties = { width: "100%", padding: "10px 13px", borderRadius: "9px", border: "1px solid #e2e8f0", background: "#f8fafc", color: "#1e293b", fontSize: "0.84rem", outline: "none", transition: "border-color 0.15s, box-shadow 0.15s", boxSizing: "border-box" };
+
+type FormData = { name: string; email: string; role: string; status: "Active" | "Inactive" };
+const EMPTY: FormData = { name: "", email: "", role: "Inventory Manager", status: "Active" };
+const ROLES = ["Administrator", "Inventory Manager", "Warehouse Staff", "Viewer"];
 
 export function Users() {
+  const { users, addUser } = useAppContext();
+  const [modalOpen, setModalOpen] = useState(false);
+  const [form, setForm] = useState<FormData>(EMPTY);
+  const [errors, setErrors] = useState<Partial<FormData>>({});
+  const [focusField, setFocusField] = useState<string | null>(null);
+
+  const set = (k: keyof FormData) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    setForm((p) => ({ ...p, [k]: e.target.value }));
+    setErrors((p) => ({ ...p, [k]: undefined }));
+  };
+
+  const validate = () => {
+    const e: Partial<FormData> = {};
+    if (!form.name.trim()) e.name = "Name is required.";
+    if (!form.email.trim()) e.email = "Email is required.";
+    else if (!/\S+@\S+\.\S+/.test(form.email)) e.email = "Enter a valid email.";
+    return e;
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const v = validate();
+    if (Object.keys(v).length) { setErrors(v); return; }
+    addUser({ name: form.name.trim(), email: form.email.trim(), role: form.role, status: form.status });
+    setForm(EMPTY);
+    setErrors({});
+    setModalOpen(false);
+  };
+
+  const closeModal = () => { setModalOpen(false); setForm(EMPTY); setErrors({}); };
+
+  const inputStyle = (field: string, hasError?: boolean): React.CSSProperties => ({
+    ...baseInput,
+    borderColor: hasError ? "#ef4444" : focusField === field ? "#7c3aed" : "#e2e8f0",
+    boxShadow: focusField === field ? "0 0 0 3px rgba(124,58,237,0.1)" : "none",
+  });
+
+  const activeCount = users.filter((u) => u.status === "Active").length;
+  const adminCount = users.filter((u) => u.role === "Administrator").length;
+
   return (
     <div style={{ padding: "28px 32px" }}>
       <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: "24px" }}>
@@ -26,7 +66,10 @@ export function Users() {
           <h1 style={{ color: "#0f172a", fontSize: "1.35rem", fontWeight: 700, lineHeight: 1.2 }}>Users</h1>
           <p style={{ color: "#64748b", fontSize: "0.84rem", marginTop: "4px" }}>Manage system users and their access roles</p>
         </div>
-        <button style={{ display: "flex", alignItems: "center", gap: "7px", padding: "9px 18px", borderRadius: "10px", background: "#7c3aed", color: "white", border: "none", cursor: "pointer", fontSize: "0.84rem", fontWeight: 600, boxShadow: "0 2px 10px rgba(124,58,237,0.3)" }}>
+        <button
+          onClick={() => setModalOpen(true)}
+          style={{ display: "flex", alignItems: "center", gap: "7px", padding: "9px 18px", borderRadius: "10px", background: "#7c3aed", color: "white", border: "none", cursor: "pointer", fontSize: "0.84rem", fontWeight: 600, boxShadow: "0 2px 10px rgba(124,58,237,0.3)" }}
+        >
           <Plus style={{ width: "15px", height: "15px" }} />
           Add User
         </button>
@@ -35,9 +78,9 @@ export function Users() {
       {/* Summary row */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: "16px", marginBottom: "20px" }}>
         {[
-          { label: "Total Users",   value: USERS.length,                              icon: UsersIcon, color: "#6366f1" },
-          { label: "Active Users",  value: USERS.filter((u) => u.status === "Active").length, icon: User, color: "#10b981" },
-          { label: "Administrators",value: USERS.filter((u) => u.role === "Administrator").length, icon: Shield, color: "#7c3aed" },
+          { label: "Total Users",    value: users.length, icon: UsersIcon, color: "#6366f1" },
+          { label: "Active Users",   value: activeCount,  icon: User,      color: "#10b981" },
+          { label: "Administrators", value: adminCount,   icon: Shield,    color: "#7c3aed" },
         ].map(({ label, value, icon: Icon, color }) => (
           <div key={label} style={{ background: "white", borderRadius: "14px", border: "1px solid #e2e8f0", boxShadow: "0 1px 3px rgba(0,0,0,0.05)", padding: "18px 20px", display: "flex", alignItems: "center", gap: "14px" }}>
             <div style={{ width: "42px", height: "42px", borderRadius: "11px", background: `${color}15`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
@@ -65,7 +108,7 @@ export function Users() {
               </tr>
             </thead>
             <tbody>
-              {USERS.map((u, i) => {
+              {users.map((u, i) => {
                 const roleCfg = ROLE_CFG[u.role] ?? { bg: "#f8fafc", color: "#64748b" };
                 const isActive = u.status === "Active";
                 return (
@@ -102,6 +145,73 @@ export function Users() {
           </table>
         </div>
       </div>
+
+      {/* Add User Modal */}
+      {modalOpen && (
+        <div
+          style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 2000 }}
+          onClick={(e) => { if (e.target === e.currentTarget) closeModal(); }}
+        >
+          <div style={{ background: "white", borderRadius: "18px", width: "100%", maxWidth: "460px", boxShadow: "0 20px 60px rgba(0,0,0,0.2)", overflow: "hidden" }}>
+            {/* Header */}
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "20px 24px", borderBottom: "1px solid #f1f5f9" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                <div style={{ width: "36px", height: "36px", borderRadius: "10px", background: "#f5f3ff", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  <User style={{ width: "18px", height: "18px", color: "#7c3aed" }} />
+                </div>
+                <div>
+                  <div style={{ fontWeight: 700, color: "#0f172a", fontSize: "0.95rem" }}>Add User</div>
+                  <div style={{ color: "#64748b", fontSize: "0.74rem" }}>Create a new system user</div>
+                </div>
+              </div>
+              <button onClick={closeModal} style={{ background: "transparent", border: "none", cursor: "pointer", color: "#94a3b8", padding: "4px" }}>
+                <X style={{ width: "18px", height: "18px" }} />
+              </button>
+            </div>
+
+            {/* Form */}
+            <form onSubmit={handleSubmit} style={{ padding: "24px", display: "flex", flexDirection: "column", gap: "16px" }}>
+              <div>
+                <label style={LABEL}>Full Name <span style={{ color: "#7c3aed" }}>*</span></label>
+                <input type="text" autoFocus value={form.name} onChange={set("name")} onFocus={() => setFocusField("name")} onBlur={() => setFocusField(null)} placeholder="e.g. John Smith" style={inputStyle("name", !!errors.name)} />
+                {errors.name && <div style={{ color: "#ef4444", fontSize: "0.74rem", marginTop: "4px" }}>{errors.name}</div>}
+              </div>
+
+              <div>
+                <label style={LABEL}>Email Address <span style={{ color: "#7c3aed" }}>*</span></label>
+                <input type="email" value={form.email} onChange={set("email")} onFocus={() => setFocusField("email")} onBlur={() => setFocusField(null)} placeholder="user@acme.com" style={inputStyle("email", !!errors.email)} />
+                {errors.email && <div style={{ color: "#ef4444", fontSize: "0.74rem", marginTop: "4px" }}>{errors.email}</div>}
+              </div>
+
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
+                <div>
+                  <label style={LABEL}>Role</label>
+                  <select value={form.role} onChange={set("role")} style={{ ...baseInput, cursor: "pointer" }}>
+                    {ROLES.map((r) => <option key={r} value={r}>{r}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label style={LABEL}>Status</label>
+                  <select value={form.status} onChange={set("status")} style={{ ...baseInput, cursor: "pointer" }}>
+                    <option value="Active">Active</option>
+                    <option value="Inactive">Inactive</option>
+                  </select>
+                </div>
+              </div>
+
+              <div style={{ display: "flex", gap: "10px", paddingTop: "4px" }}>
+                <button type="submit" style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: "7px", padding: "10px 20px", borderRadius: "10px", background: "linear-gradient(135deg, #6d28d9, #7c3aed)", color: "white", border: "none", cursor: "pointer", fontSize: "0.88rem", fontWeight: 600, boxShadow: "0 3px 12px rgba(124,58,237,0.3)" }}>
+                  <Check style={{ width: "15px", height: "15px" }} />
+                  Create User
+                </button>
+                <button type="button" onClick={closeModal} style={{ padding: "10px 18px", borderRadius: "10px", background: "white", color: "#64748b", border: "1px solid #e2e8f0", cursor: "pointer", fontSize: "0.88rem", fontWeight: 500 }}>
+                  Cancel
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
