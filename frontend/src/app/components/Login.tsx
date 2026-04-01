@@ -1,7 +1,10 @@
 import { useState } from "react";
-import { useNavigate } from "react-router";
+import { useNavigate, Navigate } from "react-router";
 import { Eye, EyeOff, Package, ArrowRight, BarChart3, ShieldCheck, Zap } from "lucide-react";
 import { ImageWithFallback } from "./figma/ImageWithFallback";
+import { useAppContext } from "../context/AppContext";
+import { signInWithPopup } from "firebase/auth";
+import { auth, googleProvider } from "../firebase";
 
 const WAREHOUSE_IMG =
   "https://images.unsplash.com/photo-1768796373360-95d80c5830fb?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHx3YXJlaG91c2UlMjBpbnZlbnRvcnklMjBtYW5hZ2VtZW50JTIwbW9kZXJufGVufDF8fHx8MTc3NDI2NDU4OXww&ixlib=rb-4.1.0&q=80&w=1080";
@@ -26,15 +29,24 @@ const INPUT_BASE: React.CSSProperties = {
 
 export function Login() {
   const navigate = useNavigate();
+  const { login, isAuthenticated } = useAppContext();
+
+  // Already logged in? Go straight to the app
+  if (isAuthenticated) return <Navigate to="/" replace />;
+
+  const [isRegister, setIsRegister] = useState(false);
+  const [name, setName]             = useState("");
   const [email, setEmail]           = useState("");
   const [password, setPassword]     = useState("");
   const [showPw, setShowPw]         = useState(false);
   const [loading, setLoading]       = useState(false);
-  const [errors, setErrors]         = useState<{ email?: string; password?: string }>({});
+  const [errors, setErrors]         = useState<{ name?: string; email?: string; password?: string; google?: string }>({});
   const [focusField, setFocusField] = useState<string | null>(null);
 
   const validate = () => {
     const e: typeof errors = {};
+    if (isRegister && !name.trim())
+      e.name = "Name is required.";
     if (!email)
       e.email = "Email is required.";
     else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))
@@ -46,13 +58,83 @@ export function Login() {
     return e;
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const v = validate();
     if (Object.keys(v).length) { setErrors(v); return; }
     setErrors({});
     setLoading(true);
-    setTimeout(() => { setLoading(false); navigate("/"); }, 1300);
+
+    try {
+      const endpoint = isRegister ? "/api/auth/register" : "/api/auth/login";
+      const bodyPayload = isRegister 
+        ? JSON.stringify({ name: name.trim(), email: email.trim(), password })
+        : JSON.stringify({ email: email.trim(), password });
+
+      const res = await fetch(`http://localhost:4000${endpoint}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: bodyPayload,
+      });
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => null);
+        throw new Error(err?.message || (isRegister ? "Registration failed" : "Invalid email or password"));
+      }
+
+      const data = await res.json();
+      login({
+        token: data.data.token,
+        name: data.data.user.name,
+        email: data.data.user.email,
+        role: data.data.user.role,
+      });
+      navigate("/", { replace: true });
+    } catch (err: any) {
+      setErrors({ email: err?.message || "Login failed" });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleGoogleSignIn = async () => {
+    setLoading(true);
+    setErrors({});
+    try {
+      const result = await signInWithPopup(auth, googleProvider);
+      const idToken = await result.user.getIdToken();
+
+      // Send to backend for verification + JWT
+      const res = await fetch("http://localhost:4000/api/auth/google", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token: idToken }),
+      });
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => null);
+        throw new Error(err?.message || "Google sign-in failed");
+      }
+
+      const data = await res.json();
+      // data.data = { token, user: { id, name, email, role } }
+      login({
+        token: data.data.token,
+        name: data.data.user.name,
+        email: data.data.user.email,
+        role: data.data.user.role,
+      });
+      navigate("/", { replace: true });
+    } catch (err: any) {
+      // If user closed popup, don't show error
+      if (err?.code === "auth/popup-closed-by-user") {
+        setLoading(false);
+        return;
+      }
+      setErrors({ google: err?.message || "Google sign-in failed" });
+    } finally {
+      setLoading(false);
+    }
   };
 
   const inputStyle = (field: string, hasError: boolean): React.CSSProperties => ({
@@ -276,7 +358,6 @@ export function Login() {
               <span style={{ fontWeight: 700, color: "#1e293b" }}>InventoryPro</span>
             </div>
 
-            {/* Title */}
             <div style={{ marginBottom: "32px" }}>
               <h2
                 style={{
@@ -287,14 +368,44 @@ export function Login() {
                   marginBottom: "8px",
                 }}
               >
-                Sign In
+                {isRegister ? "Create Account" : "Sign In"}
               </h2>
               <p style={{ color: "#64748b", fontSize: "0.86rem" }}>
-                Enter your credentials to access your account
+                {isRegister ? "Join us to manage your inventory" : "Enter your credentials to access your account"}
               </p>
             </div>
 
             <form onSubmit={handleSubmit} noValidate>
+              {/* Name */}
+              {isRegister && (
+                <div style={{ marginBottom: "18px" }}>
+                  <label
+                    htmlFor="name"
+                    style={{ display: "block", color: "#374151", fontSize: "0.82rem", fontWeight: 500, marginBottom: "7px" }}
+                  >
+                    Full Name
+                  </label>
+                  <input
+                    id="name"
+                    type="text"
+                    autoComplete="name"
+                    placeholder="John Doe"
+                    value={name}
+                    onFocus={() => setFocusField("name")}
+                    onBlur={() => setFocusField(null)}
+                    onChange={(e) => {
+                      setName(e.target.value);
+                      if (errors.name) setErrors((p) => ({ ...p, name: undefined }));
+                    }}
+                    style={inputStyle("name", !!errors.name)}
+                  />
+                  {errors.name && (
+                    <p style={{ color: "#7c3aed", fontSize: "0.75rem", marginTop: "5px" }}>
+                      {errors.name}
+                    </p>
+                  )}
+                </div>
+              )}
               {/* Email */}
               <div style={{ marginBottom: "18px" }}>
                 <label
@@ -378,23 +489,26 @@ export function Login() {
               </div>
 
               {/* Forgot password */}
-              <div style={{ textAlign: "right", marginBottom: "24px" }}>
-                <button
-                  type="button"
-                  style={{
-                    background: "transparent",
-                    border: "none",
-                    color: "#7c3aed",
-                    cursor: "pointer",
-                    fontSize: "0.8rem",
-                    fontWeight: 500,
-                  }}
-                >
-                  Forgot Password?
-                </button>
-              </div>
+              {!isRegister && (
+                <div style={{ textAlign: "right", marginBottom: "24px" }}>
+                  <button
+                    type="button"
+                    style={{
+                      background: "transparent",
+                      border: "none",
+                      color: "#7c3aed",
+                      cursor: "pointer",
+                      fontSize: "0.8rem",
+                      fontWeight: 500,
+                    }}
+                  >
+                    Forgot Password?
+                  </button>
+                </div>
+              )}
+              {isRegister && <div style={{ marginBottom: "24px" }} />}
 
-              {/* Sign In button */}
+              {/* Sign In / Sign Up button */}
               <button
                 type="submit"
                 disabled={loading}
@@ -438,10 +552,10 @@ export function Login() {
                         d="M4 12a8 8 0 018-8v8H4z"
                       />
                     </svg>
-                    Signing in…
+                    {isRegister ? "Signing up…" : "Signing in…"}
                   </>
                 ) : (
-                  "Sign In"
+                  isRegister ? "Sign Up" : "Sign In"
                 )}
               </button>
             </form>
@@ -460,11 +574,58 @@ export function Login() {
               <div style={{ flex: 1, height: "1px", background: "#f1f5f9" }} />
             </div>
 
-            {/* Sign up */}
-            <p style={{ textAlign: "center", color: "#64748b", fontSize: "0.84rem" }}>
-              Don't have an account?{" "}
+            {/* Google Sign-In */}
+            <button
+              type="button"
+              onClick={handleGoogleSignIn}
+              disabled={loading}
+              style={{
+                width: "100%",
+                padding: "11px",
+                borderRadius: "11px",
+                background: "white",
+                color: "#374151",
+                border: "1px solid #e2e8f0",
+                cursor: loading ? "not-allowed" : "pointer",
+                fontSize: "0.88rem",
+                fontWeight: 500,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: "10px",
+                transition: "all 0.15s",
+                boxShadow: "0 1px 3px rgba(0,0,0,0.06)",
+              }}
+              onMouseEnter={(e) => { if (!loading) e.currentTarget.style.background = "#f8fafc"; }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = "white"; }}
+            >
+              {/* Google "G" icon */}
+              <svg width="18" height="18" viewBox="0 0 48 48">
+                <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
+                <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
+                <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/>
+                <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
+              </svg>
+              Sign in with Google
+            </button>
+
+            {errors.google && (
+              <p style={{ color: "#ef4444", fontSize: "0.78rem", marginTop: "8px", textAlign: "center" }}>
+                {errors.google}
+              </p>
+            )}
+
+            {/* Sign up / Sign in toggle */}
+            <p style={{ textAlign: "center", color: "#64748b", fontSize: "0.84rem", marginTop: "20px" }}>
+              {isRegister ? "Already have an account?" : "Don't have an account?"}{" "}
               <button
                 type="button"
+                onClick={() => {
+                  setIsRegister(!isRegister);
+                  setErrors({});
+                  setName("");
+                  setPassword("");
+                }}
                 style={{
                   background: "transparent",
                   border: "none",
@@ -474,7 +635,7 @@ export function Login() {
                   fontWeight: 600,
                 }}
               >
-                Sign Up
+                {isRegister ? "Sign In" : "Sign Up"}
               </button>
             </p>
           </div>

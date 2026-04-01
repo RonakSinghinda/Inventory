@@ -141,9 +141,9 @@ export function AddProduct() {
                 </div>
               </Field>
 
-              <Field id="price" label="Price (USD)" required error={errors.price}>
+              <Field id="price" label="Price (INR)" required error={errors.price}>
                 <div style={{ position: "relative" }}>
-                  <span style={{ position: "absolute", left: "12px", top: "50%", transform: "translateY(-50%)", color: "#94a3b8", fontSize: "0.85rem" }}>$</span>
+                  <span style={{ position: "absolute", left: "12px", top: "50%", transform: "translateY(-50%)", color: "#94a3b8", fontSize: "0.85rem" }}>₹</span>
                   <input id="price" type="number" min="0" step="0.01" value={form.price} placeholder="0.00" onFocus={() => setFocus("price")} onBlur={() => setFocus(null)} onChange={set("price")} style={{ ...INPUT(focus === "price", !!errors.price), paddingLeft: "24px" }} />
                 </div>
               </Field>

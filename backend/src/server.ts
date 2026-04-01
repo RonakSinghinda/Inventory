@@ -1,5 +1,5 @@
-import app from './app';
 import { env } from './config/env';
+import app from './app';
 import { prisma } from './lib/prisma';
 
 const PORT = env.PORT;

@@ -50,7 +50,7 @@ const NOTIF_COLOR: Record<string, string> = {
 
 export function Layout() {
   const navigate = useNavigate();
-  const { currentUser, notifications, markAllRead, unreadCount } = useAppContext();
+  const { currentUser, notifications, markAllRead, unreadCount, logout } = useAppContext();
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [profileOpen, setProfileOpen] = useState(false);
   const [bellOpen, setBellOpen] = useState(false);
@@ -67,6 +67,7 @@ export function Layout() {
 
   const handleLogout = () => {
     setProfileOpen(false);
+    logout();
     navigate("/login");
   };
 
@@ -162,7 +163,7 @@ export function Layout() {
         {/* Logout */}
         <div style={{ padding: "12px 10px", borderTop: "1px solid rgba(255,255,255,0.07)", flexShrink: 0 }}>
           <button
-            onClick={() => navigate("/login")}
+            onClick={() => { logout(); navigate("/login"); }}
             style={{
               display: "flex", alignItems: "center", gap: "10px", width: "100%",
               padding: "9px 10px", borderRadius: "8px", background: "transparent",
@@ -349,12 +350,12 @@ export function Layout() {
                 {/* Menu items */}
                 <div style={{ padding: "8px" }}>
                   {[
-                    { icon: User, label: "My Profile" },
-                    { icon: Settings, label: "Settings" },
-                  ].map(({ icon: Icon, label }) => (
+                    { icon: User, label: "My Profile", path: "/profile" },
+                    { icon: Settings, label: "Settings", path: "/settings" },
+                  ].map(({ icon: Icon, label, path }) => (
                     <button
                       key={label}
-                      onClick={() => setProfileOpen(false)}
+                      onClick={() => { setProfileOpen(false); navigate(path); }}
                       style={{ display: "flex", alignItems: "center", gap: "10px", width: "100%", padding: "9px 12px", borderRadius: "9px", background: "transparent", border: "none", cursor: "pointer", color: "#374151", fontSize: "0.84rem", fontWeight: 500, transition: "background 0.12s" }}
                       onMouseEnter={(e) => (e.currentTarget.style.background = "#f8fafc")}
                       onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}

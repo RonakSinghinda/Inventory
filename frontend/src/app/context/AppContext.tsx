@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useCallback, type ReactNode } from "react";
+import { createContext, useContext, useState, useCallback, useMemo, type ReactNode } from "react";
 import {
   products as initialProducts,
   stockHistory as initialHistory,
@@ -98,6 +98,11 @@ type AppContextType = {
   unreadCount: number;
 
   currentUser: AppUser;
+
+  // ── Auth ──
+  isAuthenticated: boolean;
+  login: (data: { token: string; name: string; email: string; role: string }) => void;
+  logout: () => void;
 };
 
 const AppContext = createContext<AppContextType | null>(null);
@@ -137,7 +142,84 @@ function today() {
 
 // ─── Provider ─────────────────────────────────────────────────────────────────
 
+// ── Auth helpers ─────────────────────────────────────────────────────────────
+
+const AUTH_KEY = "inv_auth_email";
+const AUTH_TOKEN_KEY = "inv_auth_token";
+const AUTH_USER_KEY = "inv_auth_user";
+
+function readStoredEmail(): string | null {
+  try { return localStorage.getItem(AUTH_KEY); } catch { return null; }
+}
+
+function readStoredUser(): { name: string; email: string; role: string } | null {
+  try {
+    const raw = localStorage.getItem(AUTH_USER_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch { return null; }
+}
+
+function buildCurrentUser(email: string | null, storedUser?: { name: string; email: string; role: string } | null): AppUser {
+  if (!email) return initialUsers[0]; // fallback
+  // Check if we have stored Google user info
+  if (storedUser && storedUser.email.toLowerCase() === email.toLowerCase()) {
+    const name = storedUser.name;
+    return {
+      id: 0,
+      name,
+      email: storedUser.email,
+      role: storedUser.role === 'admin' ? 'Administrator' : storedUser.role === 'manager' ? 'Inventory Manager' : storedUser.role === 'staff' ? 'Warehouse Staff' : storedUser.role,
+      lastLogin: "Just now",
+      status: "Active",
+      initials: makeInitials(name),
+      color: "#7c3aed",
+    };
+  }
+  // See if this email maps to one of the seeded users
+  const existing = initialUsers.find(
+    (u) => u.email.toLowerCase() === email.toLowerCase()
+  );
+  if (existing) return existing;
+  // Brand-new email from login form → create an on-the-fly user object
+  const name = email.split("@")[0].replace(/[._-]/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+  return {
+    id: 0,
+    name,
+    email,
+    role: "Administrator",
+    lastLogin: "Just now",
+    status: "Active",
+    initials: makeInitials(name),
+    color: "#7c3aed",
+  };
+}
+
 export function AppProvider({ children }: { children: ReactNode }) {
+  const [authEmail, setAuthEmail] = useState<string | null>(readStoredEmail);
+  const [storedUser, setStoredUser] = useState<{ name: string; email: string; role: string } | null>(readStoredUser);
+  const isAuthenticated = authEmail !== null;
+  const currentUser = useMemo(() => buildCurrentUser(authEmail, storedUser), [authEmail, storedUser]);
+
+  const login = useCallback((data: { token: string; name: string; email: string; role: string }) => {
+    try {
+      localStorage.setItem(AUTH_KEY, data.email);
+      localStorage.setItem(AUTH_TOKEN_KEY, data.token);
+      localStorage.setItem(AUTH_USER_KEY, JSON.stringify({ name: data.name, email: data.email, role: data.role }));
+    } catch { /* ignore */ }
+    setStoredUser({ name: data.name, email: data.email, role: data.role });
+    setAuthEmail(data.email);
+  }, []);
+
+  const logout = useCallback(() => {
+    try {
+      localStorage.removeItem(AUTH_KEY);
+      localStorage.removeItem(AUTH_TOKEN_KEY);
+      localStorage.removeItem(AUTH_USER_KEY);
+    } catch { /* ignore */ }
+    setStoredUser(null);
+    setAuthEmail(null);
+  }, []);
+
   const [products, setProducts] = useState<Product[]>(initialProducts);
   const [vendors, setVendors] = useState<Vendor[]>(initialVendors);
   const [users, setUsers] = useState<AppUser[]>(initialUsers);
@@ -145,7 +227,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [suppliers] = useState<string[]>(initialSuppliers);
   const [stockHistory, setStockHistory] = useState<StockEntry[]>(initialHistory);
   const [notifications, setNotifications] = useState<Notification[]>(buildInitialNotifications);
-  const currentUser = initialUsers[0];
 
   // ── Notifications helper ──
   const pushNotification = useCallback((notif: Omit<Notification, "id" | "timestamp" | "read">) => {
@@ -288,6 +369,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         stockHistory, addStockEntry,
         notifications, markAllRead, unreadCount,
         currentUser,
+        isAuthenticated, login, logout,
       }}
     >
       {children}

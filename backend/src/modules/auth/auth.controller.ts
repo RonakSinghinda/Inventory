@@ -17,6 +17,15 @@ export const authController = {
     } catch (err) { next(err); }
   },
 
+  googleLogin: async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const { token } = req.body;
+      if (!token) { res.status(400).json(new ApiResponse(400, null, 'Token is required')); return; }
+      const result = await authService.googleLogin(token);
+      res.json(new ApiResponse(200, result, 'Google login successful'));
+    } catch (err) { next(err); }
+  },
+
   me: (req: Request, res: Response): void => {
     res.json(new ApiResponse(200, req.user, 'Authenticated user'));
   },

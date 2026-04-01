@@ -159,7 +159,7 @@ export function ProductList() {
                       <td style={TD}><span style={{ padding: "3px 9px", borderRadius: "6px", background: "#f1f5f9", color: "#475569", fontSize: "0.78rem", fontWeight: 500 }}>{p.category}</span></td>
                       <td style={{ ...TD, fontWeight: 600, color: p.quantity === 0 ? "#dc2626" : p.quantity <= p.minStock ? "#7c3aed" : "#1e293b" }}>{p.quantity}</td>
                       <td style={{ ...TD, color: "#64748b" }}>{p.minStock}</td>
-                      <td style={{ ...TD, fontWeight: 600, color: "#1e293b" }}>${p.price.toFixed(2)}</td>
+                      <td style={{ ...TD, fontWeight: 600, color: "#1e293b" }}>₹{p.price.toFixed(2)}</td>
                       <td style={TD}>
                         <span style={{ display: "inline-flex", alignItems: "center", gap: "5px", padding: "4px 10px", borderRadius: "20px", background: s.bg, color: s.color, fontSize: "0.72rem", fontWeight: 600 }}>
                           <span style={{ width: "6px", height: "6px", borderRadius: "50%", background: s.dot, display: "inline-block" }} />
@@ -252,9 +252,9 @@ export function ProductList() {
               </div>
               {/* Price */}
               <div>
-                <label style={LABEL}>Price (USD) <span style={{ color: "#7c3aed" }}>*</span></label>
+                <label style={LABEL}>Price (INR) <span style={{ color: "#7c3aed" }}>*</span></label>
                 <div style={{ position: "relative" }}>
-                  <span style={{ position: "absolute", left: "12px", top: "50%", transform: "translateY(-50%)", color: "#94a3b8", fontSize: "0.85rem" }}>$</span>
+                  <span style={{ position: "absolute", left: "12px", top: "50%", transform: "translateY(-50%)", color: "#94a3b8", fontSize: "0.85rem" }}>₹</span>
                   <input type="number" min="0" step="0.01" value={form.price} onChange={set("price")} onFocus={() => setFocusField("price")} onBlur={() => setFocusField(null)} style={{ ...inputStyle("price", !!errors.price), paddingLeft: "24px" }} />
                 </div>
                 {errors.price && <div style={{ display: "flex", alignItems: "center", gap: "4px", marginTop: "4px" }}><Info style={{ width: "12px", height: "12px", color: "#7c3aed" }} /><span style={{ color: "#7c3aed", fontSize: "0.72rem" }}>{errors.price}</span></div>}

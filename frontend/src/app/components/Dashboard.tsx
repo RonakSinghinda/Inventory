@@ -34,7 +34,8 @@ const STATS = [
 
 export function Dashboard() {
   const navigate = useNavigate();
-  const { products, stockHistory } = useAppContext();
+  const { products, stockHistory, currentUser } = useAppContext();
+  const firstName = currentUser.name.split(" ")[0];
   const lowStock     = products.filter((p) => p.status === "Low Stock" || p.status === "Out of Stock");
   const recentActivity = stockHistory.slice(0, 6);
 
@@ -59,7 +60,7 @@ export function Dashboard() {
 
         <div style={{ position: "relative", zIndex: 1 }}>
           <div style={{ fontSize: "0.68rem", fontWeight: 600, letterSpacing: "0.12em", textTransform: "uppercase", color: "#c4b5fd", marginBottom: "8px" }}>
-            Welcome back, John
+            Welcome back, {firstName}
           </div>
           <h1 style={{ color: "white", fontSize: "1.8rem", fontWeight: 700, lineHeight: 1.2, marginBottom: "12px" }}>
             Inventory Overview

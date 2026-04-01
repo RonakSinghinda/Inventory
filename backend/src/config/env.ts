@@ -12,4 +12,5 @@ export const env = cleanEnv(process.env, {
   DATABASE_URL:   str(),
   JWT_SECRET:     str(),
   JWT_EXPIRES_IN: str({ default: '7d' }),
+  FIREBASE_PROJECT_ID: str({ default: '' }),
 });
