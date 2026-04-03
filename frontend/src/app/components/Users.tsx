@@ -14,8 +14,8 @@ const TD: React.CSSProperties = { padding: "14px 16px", fontSize: "0.84rem", col
 const LABEL: React.CSSProperties = { display: "block", fontSize: "0.8rem", fontWeight: 600, color: "#374151", marginBottom: "6px" };
 const baseInput: React.CSSProperties = { width: "100%", padding: "10px 13px", borderRadius: "9px", border: "1px solid #e2e8f0", background: "#f8fafc", color: "#1e293b", fontSize: "0.84rem", outline: "none", transition: "border-color 0.15s, box-shadow 0.15s", boxSizing: "border-box" };
 
-type FormData = { name: string; email: string; role: string; status: "Active" | "Inactive" };
-const EMPTY: FormData = { name: "", email: "", role: "Inventory Manager", status: "Active" };
+type FormData = { name: string; email: string; role: string; status: "Active" | "Inactive"; password?: string };
+const EMPTY: FormData = { name: "", email: "", password: "", role: "Inventory Manager", status: "Active" };
 const ROLES = ["Administrator", "Inventory Manager", "Warehouse Staff", "Viewer"];
 
 export function Users() {
@@ -35,6 +35,8 @@ export function Users() {
     if (!form.name.trim()) e.name = "Name is required.";
     if (!form.email.trim()) e.email = "Email is required.";
     else if (!/\S+@\S+\.\S+/.test(form.email)) e.email = "Enter a valid email.";
+    if (!form.password) e.password = "Password is required.";
+    else if (form.password.length < 6) e.password = "Password must be at least 6 characters.";
     return e;
   };
 
@@ -42,7 +44,7 @@ export function Users() {
     e.preventDefault();
     const v = validate();
     if (Object.keys(v).length) { setErrors(v); return; }
-    addUser({ name: form.name.trim(), email: form.email.trim(), role: form.role, status: form.status });
+    addUser({ name: form.name.trim(), email: form.email.trim(), password: form.password, role: form.role, status: form.status });
     setForm(EMPTY);
     setErrors({});
     setModalOpen(false);
@@ -181,6 +183,12 @@ export function Users() {
                 <label style={LABEL}>Email Address <span style={{ color: "#7c3aed" }}>*</span></label>
                 <input type="email" value={form.email} onChange={set("email")} onFocus={() => setFocusField("email")} onBlur={() => setFocusField(null)} placeholder="user@acme.com" style={inputStyle("email", !!errors.email)} />
                 {errors.email && <div style={{ color: "#ef4444", fontSize: "0.74rem", marginTop: "4px" }}>{errors.email}</div>}
+              </div>
+
+              <div>
+                <label style={LABEL}>Password <span style={{ color: "#7c3aed" }}>*</span></label>
+                <input type="password" value={form.password || ""} onChange={set("password")} onFocus={() => setFocusField("password")} onBlur={() => setFocusField(null)} placeholder="Create a password" style={inputStyle("password", !!errors.password)} />
+                {errors.password && <div style={{ color: "#ef4444", fontSize: "0.74rem", marginTop: "4px" }}>{errors.password}</div>}
               </div>
 
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>

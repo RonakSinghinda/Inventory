@@ -2,7 +2,7 @@ export type ProductStatus = "In Stock" | "Low Stock" | "Out of Stock";
 export type StockAction = "Add" | "Remove" | "Adjust";
 
 export type Product = {
-  id: number;
+  id: string | number;
   name: string;
   sku: string;
   category: string;
@@ -14,7 +14,7 @@ export type Product = {
 };
 
 export type StockEntry = {
-  id: number;
+  id: string | number;
   date: string;
   time: string;
   product: string;

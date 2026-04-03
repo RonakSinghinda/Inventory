@@ -4,6 +4,7 @@ import {
   ArrowUpRight, ArrowDownRight, ArrowRight, TrendingUp,
 } from "lucide-react";
 import { useAppContext } from "../context/AppContext";
+import type { Product, StockEntry } from "../data/mockData";
 
 const CARD: React.CSSProperties = {
   background: "white",
@@ -24,20 +25,24 @@ const ACTION_CFG = {
   Adjust: { bg: "#f5f3ff", color: "#7c3aed", symbol: "~" },
 } as const;
 
-const STATS = [
-  { label: "Total Products",  value: "248",   icon: Package,   color: "#6366f1", change: "+12",    up: true  },
-  { label: "Available Stock", value: "1,842", icon: BarChart2, color: "#10b981", change: "+5.2%",  up: true  },
-  { label: "Low Stock Items", value: "14",    icon: AlertTriangle, color: "#7c3aed", change: "+3", up: false },
-  { label: "Categories",      value: "6",     icon: Tag,       color: "#8b5cf6", change: "Stable", up: true  },
-  { label: "Suppliers",       value: "18",    icon: Truck,     color: "#0ea5e9", change: "+2",     up: true  },
-];
+// Dynamic stats are moved inside the component body
 
 export function Dashboard() {
   const navigate = useNavigate();
-  const { products, stockHistory, currentUser } = useAppContext();
+  const { products, stockHistory, currentUser, categories, vendors } = useAppContext();
   const firstName = currentUser.name.split(" ")[0];
-  const lowStock     = products.filter((p) => p.status === "Low Stock" || p.status === "Out of Stock");
+  const lowStock     = products.filter((p: Product) => p.status === "Low Stock" || p.status === "Out of Stock");
   const recentActivity = stockHistory.slice(0, 6);
+  
+  const totalQuantity = products.reduce((sum: number, p: Product) => sum + p.quantity, 0);
+
+  const stats = [
+    { label: "Total Products",  value: products.length.toString(),   icon: Package,   color: "#6366f1", change: "Live",    up: true  },
+    { label: "Available Stock", value: totalQuantity.toString(), icon: BarChart2, color: "#10b981", change: "Live",  up: true  },
+    { label: "Low Stock Items", value: lowStock.length.toString(),    icon: AlertTriangle, color: "#7c3aed", change: lowStock.length > 0 ? "Warning" : "Good", up: lowStock.length === 0 },
+    { label: "Categories",      value: categories.length.toString(),     icon: Tag,       color: "#8b5cf6", change: "Live", up: true  },
+    { label: "Suppliers",       value: vendors.length.toString(),    icon: Truck,     color: "#0ea5e9", change: "Live",     up: true  },
+  ];
 
   return (
     <div style={{ padding: "28px 32px" }}>
@@ -90,7 +95,7 @@ export function Dashboard() {
       <div
         style={{ display: "grid", gridTemplateColumns: "repeat(5,1fr)", gap: "16px", marginBottom: "24px" }}
       >
-        {STATS.map((s) => (
+        {stats.map((s) => (
           <div key={s.label} style={CARD}>
             <div style={{ padding: "20px" }}>
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "14px" }}>
@@ -139,7 +144,7 @@ export function Dashboard() {
               View All <ArrowRight style={{ width: "12px", height: "12px" }} />
             </button>
           </div>
-          {lowStock.map((item) => {
+          {lowStock.map((item: Product) => {
             const s = STATUS_CFG[item.status];
             return (
               <div
@@ -177,7 +182,7 @@ export function Dashboard() {
               View All <ArrowRight style={{ width: "12px", height: "12px" }} />
             </button>
           </div>
-          {recentActivity.map((entry) => {
+          {recentActivity.map((entry: StockEntry) => {
             const a = ACTION_CFG[entry.action];
             return (
               <div
