@@ -4,15 +4,15 @@ import { CreateProductInput, UpdateProductInput } from './products.dto';
 import { PRODUCT_STATUS } from '../../config/constants';
 
 const computeStatus = (quantity: number, minStock: number): string => {
-  if (quantity <= 0)              return PRODUCT_STATUS.OUT_OF_STOCK;
-  if (quantity <= minStock)       return PRODUCT_STATUS.LOW_STOCK;
+  if (quantity <= 0) return PRODUCT_STATUS.OUT_OF_STOCK;
+  if (quantity <= minStock) return PRODUCT_STATUS.LOW_STOCK;
   return PRODUCT_STATUS.IN_STOCK;
 };
 
 export const productsService = {
   getAll: async () => {
     const products = await productsRepository.findAll();
-    return products.map((p) => ({ ...p, status: computeStatus(p.quantity, p.minStock) }));
+    return products.map((p: any) => ({ ...p, status: computeStatus(p.quantity, p.minStock) }));
   },
 
   getById: async (id: string) => {
